@@ -1,0 +1,35 @@
+<a href="/download/result/[% zipfile %]">Download [% zipfile %]</a><br/>
+
+<br/>
+
+<style>
+
+a.xitem-file.jstree-anchor
+{
+	text-decoration: underline;
+	color: blue;
+}
+
+</style>
+
+<div id="suiteartifacts">[% htmlized %]</div>
+
+<script>
+$(document).ready
+	(
+		function()
+		{
+			$('#suiteartifacts').jstree();
+			$('#suiteartifacts').on
+				(
+					'select_node.jstree',
+						function(node, selected, event)
+							{
+								var uri = selected.node.a_attr.href;
+								if (uri != '#')
+									window.open(uri);
+							}
+				);
+		}
+	);
+</script>

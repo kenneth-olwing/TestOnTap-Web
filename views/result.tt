@@ -1,0 +1,25 @@
+<a href="/download/result/[% zipfile %]">Download [% zipfile %]</a><br/>
+
+<br/>
+
+<table class="resultoverview">
+	<caption class="resultoverview">Context overview:</caption>
+	[% FOREACH key IN overview.keys.sort %]
+		<tr class="resultoverview">
+			<th class="resultoverview">[% key %]</th>
+			<td class="resultoverview">[% overview.$key %]</td>
+		</tr>
+	[% END %]
+</table>
+
+<br/>
+
+<table class="resultoverview">
+	<caption class="resultoverview">Environment:</caption>
+	[% FOREACH key IN env.keys.sort %]
+		<tr class="resultoverview">
+			<th class="resultoverview">[% key %]</th>
+			<td class="resultoverview">[% env.$key %]</td>
+		</tr>
+	[% END %]
+</table>

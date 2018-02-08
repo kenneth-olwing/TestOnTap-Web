@@ -1,0 +1,11 @@
+id = 32a996f4-fb66-11e7-9745-9145cedcf068
+
+# we don't yet know if it's a great idea to parallelize...
+parallelizable = false
+
+order = natural
+
+execmap = t-files
+[EXECMAP t-files]
+match = regexp(\.t$)
+cmd = perl

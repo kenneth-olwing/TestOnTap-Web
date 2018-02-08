@@ -1,0 +1,29 @@
+<a href="/download/result/[% zipfile %]">Download [% zipfile %]</a><br/>
+
+<br/>
+
+<table class="resultoverview">
+	<caption class="resultoverview">Overview:</caption>
+	[% FOREACH key IN overview.keys.sort %]
+		<tr class="resultoverview">
+			<th class="resultoverview">[% key %]</th>
+			<td class="resultoverview">[% overview.$key %]</td>
+		</tr>
+	[% END %]
+</table>
+
+[% IF test.has_problems %]
+	<br/>
+
+	<table class="resultoverview">
+		<caption class="resultoverview">Failed microtests:</caption>
+		[% FOREACH item IN test.failed %]
+			<tr class="resultoverview">
+				<th class="resultoverview">[% item %]</th>
+			</tr>
+		[% END %]
+	</table>
+[% END %]
+
+<p style="font-size: large; font-weight: bold;">TAP output:</p>
+<pre class="boxed"><div class="taptext">[% FOREACH item IN tap %][% item %]<br/>[% END %]</div></pre>

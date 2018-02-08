@@ -1,0 +1,39 @@
+.DEFAULT_GOAL := all
+
+.PHONY: all
+all: builddir datadir configure test package
+
+.PHONY: configure
+configure: $(carton_local_dir)
+
+.PHONY: test
+test: builddir datadir configure
+	$(at)testontap $(testontap_opts) $(testontap_suite_dir)
+
+.PHONY: package
+package: builddir datadir configure package_zip
+
+.PHONY: builddir
+builddir: $(build_dir)
+
+.PHONY: datadir
+datadir: $(data_dir)
+
+$(build_dir) $(data_dir):
+	$(at)$(call func_echo,Creating directory $@...)
+	$(at)mkdir $@
+	
+$(carton_local_dir): $(basedir)/cpanfile $(basedir)/cpanfile.snapshot
+	$(at)carton install --path $@
+	$(at)$(touch) $@
+
+package_zip:
+	$(at)perl $(make_helpers_path)/package.pl $(basedir) $(packagename) $(package_zip)
+
+.PHONY: clean
+clean:
+	$(at)$(rm_rf) $(build_dir)
+	
+.PHONY: realclean
+realclean: clean 
+	$(at)$(rm_rf) $(production_logs_dir) $(data_dir) $(carton_local_dir)

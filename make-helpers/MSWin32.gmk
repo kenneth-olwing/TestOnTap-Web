@@ -1,0 +1,21 @@
+# Defines for Windows
+#
+
+# some trickery to get a lone backslash (leaving it at the end of the line
+# makes it become a continuation line...
+#
+pathsep := $(subst \,\,\)
+
+listsep := ;
+
+shquote := "
+intquote := '
+
+stdout_to_null_pattern := 1>nul
+stderr_to_null_pattern := 2>nul
+
+func_slashify = $(subst /,$(pathsep),$(1))
+
+func_echo = echo $(1)
+
+SHELL := $(SystemRoot)$(pathsep)system32$(pathsep)cmd.exe

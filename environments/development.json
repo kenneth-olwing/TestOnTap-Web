@@ -1,0 +1,20 @@
+{
+	"traces" : 1,
+	"warnings" : 1,
+	"show_errors" : 1,
+	"startup_info" : 1,
+	"logger" : "Console",
+	"engines" :
+		{
+			"logger" :
+				{
+					"Console" :
+						{
+							"log_level" : "core" 
+						}  
+				} 
+		},
+	"TestOnTap-Web" :
+		{
+		}
+}

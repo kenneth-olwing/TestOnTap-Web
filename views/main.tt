@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+
+	<head>
+		<title>TestOnTap-Web</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<noscript>Sorry, your browser does not support JavaScript!</noscript>
+	</head>
+	
+	<body>
+		
+		<div class="header">
+			<h1>TestOnTap-Web</h1>
+		</div>
+
+		<div class="topbar">
+			<form id="uploadForm" enctype="multipart/form-data">
+				<input type="file" name="testresult" id="inpUpload" multiple="true">
+			</form>
+			<button type="button" id="btnUpload">Upload test result</button>
+			<p id="uploadMsg"/>
+		</div>
+
+		[% IF dev %]
+			<div class="devbar">
+				DEVELOPMENT MODE!
+				&nbsp;
+				<button id="btnKickParser">Kick parser</button>
+				<button id="btnSwitchAutoUpd">Switch autoupd</button>
+			</div>
+		[% END %]
+
+		<div class="row">
+			
+			<div class="column suitenav">
+				<div>
+					<h3 id="suitestitle" class="columntitle" style="display:inline-block;">Suites</h3>
+					(auto:<input id="autoupd" type="checkbox"/>)
+				</div>
+				<hr/>
+				<div id="suitenavtree"></div>
+			</div>
+			
+			<div class="column testinfo">
+				<h3 id="infotitle" class="columntitle">...</h3>
+				<hr/>
+				<div id="infobox"></div>
+			</div>
+			
+		</div>
+
+		<div class="lowbar">
+			&nbsp;
+		</div>
+	
+		<div class="footer">
+			<a href="https://metacpan.org/pod/distribution/App-TestOnTap/script/testontap" target="_blank">
+				<img src="beartap.png" alt="BearTAP" title="BearTAP" class="beartap" height="50"/>
+			</a>
+		</div>
+		
+		<link href="css/style.css" rel="stylesheet"/>
+		<link rel="stylesheet" href="js/jstree-3.3.5/themes/default/style[% dotMin %].css" />
+		<script src="js/jquery/jquery-3.2.1[% dotMin %].js"></script>
+		<script src="js/jstree-3.3.5/jstree[% dotMin %].js"></script>
+		<script src="js/testontap-web.js"></script>
+
+		[% IF dev %]
+			<script src="js/testontap-web-dev.js"></script>
+		[% END %]
+
+	</body>
+	
+</html>

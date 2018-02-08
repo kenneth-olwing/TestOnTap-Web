@@ -1,0 +1,48 @@
+# set variables to be used
+# some are platform-specific
+#
+
+# silently try to include the OS specific port
+# if not found, missing defines should be trapped below
+#
+platform := $(shell perl $(make_helpers_path)/platform.pl)
+platform_settings_file := $(make_helpers_path)/$(platform).gmk
+-include $(platform_settings_file)
+
+# build a list of vars that should be set in each OS port
+#
+os_vars_required := func_echo
+os_vars_required += stdout_to_null_pattern
+os_vars_required += stderr_to_null_pattern
+os_vars_required += pathsep
+os_vars_required += listsep
+os_vars_required += shquote
+os_vars_required += intquote
+os_vars_required += func_slashify
+os_vars_required += SHELL
+$(call macro_ifndef_err,Make sure "$(platform_settings_file)" is created and defines the required variables,$(os_vars_required))
+
+basedir := $(call func_slashify,$(basedir))
+build_dir := $(call func_slashify,$(basedir)/build)
+data_dir := $(call func_slashify,$(basedir)/data)
+carton_local_dir := $(call func_slashify,$(basedir)/local)
+production_logs_dir := $(call func_slashify,$(basedir)/logs)
+systemname := TestOnTap-Web
+systemver := $(shell git describe $(stderr_to_null))
+systemver := $(if $(systemver),$(systemver),$(shell perl $(make_helpers_path)/timestamp.pl))
+packagename := $(systemname)_$(systemver)_$(platform)
+package_zip := $(call func_slashify,$(build_dir)/$(packagename).zip)
+testontap_opts := --merge --archive --savedirectory $(build_dir) --define systemname=$(systemname) --define systemver=$(systemver) --define platform=$(platform)  
+testontap_suite_dir := $(call func_slashify,$(basedir)/testsuites/testsuite-testontap-web-dev-mock)
+
+ifdef DEBUG_BUILD
+  stdout_to_null :=
+  stderr_to_null :=
+  testontap_opts := --verbose --timer $(testontap_opts) --no-merge
+else
+  stdout_to_null := $(stdout_to_null_pattern)
+  stderr_to_null := $(stderr_to_null_pattern)
+endif
+
+touch := perl $(make_helpers_path)/touch.pl
+rm_rf := perl $(make_helpers_path)/rm_rf.pl 

@@ -1,0 +1,21 @@
+# Defines for Generic Unix
+#
+
+# some trickery to get a lone backslash (leaving it at the end of the line
+# makes it become a continuation line...
+#
+pathsep := /
+
+listsep := :
+
+shquote := '
+intquote := "
+
+stdout_to_null_pattern := 1>/dev/null
+stderr_to_null_pattern := 2>/dev/null
+
+func_slashify = $(subst \\,$(pathsep),$(1))
+
+func_echo = echo $(shquote)$(1)$(shquote)
+
+SHELL := /bin/sh

@@ -1,0 +1,19 @@
+<table class="suiteoverview">
+	<caption class="suiteoverview">[% resultcount %] result(s):</caption>
+	<tr class="suiteoverview">
+		<th class="suiteoverview">Average elapsed time</th>
+		<td class="suiteoverview">[% elapsed.average %]</td>
+	</tr>
+	<tr class="suiteoverview">
+		<th class="suiteoverview">Median elapsed time</th>
+		<td class="suiteoverview">[% elapsed.median %]</td>
+	</tr>
+	<tr class="suiteoverview">
+		<th class="suiteoverview">Minimum elapsed time</th>
+		<td class="suiteoverview">[% elapsed.min %]</td>
+	</tr>
+	<tr class="suiteoverview">
+		<th class="suiteoverview">Maximum elapsed time</th>
+		<td class="suiteoverview">[% elapsed.max %]</td>
+	</tr>
+</table>

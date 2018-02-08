@@ -1,0 +1,9 @@
+{
+	"appname" : "TestOnTap-Web",
+	"charset": "UTF-8",
+	"template" : "template_toolkit",
+	"TestOnTap-Web" :
+		{
+			"datadir" : "data"
+		}
+}

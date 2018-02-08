@@ -1,0 +1,186 @@
+*
+{
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	box-sizing: border-box;
+	font-family: sans-serif;
+}
+
+body
+{
+	margin: 0;
+}
+
+.header
+{
+	background-color: lightgray;
+	padding: 1px;
+	text-align: center;
+}
+
+.topbar
+{
+	background-color: gray;
+	padding: 1px;
+	display: flex;
+}
+
+.boxed
+{
+	border-style: solid;
+	border-width: 1px;
+	padding: 0;
+	margin: 0;
+}
+
+.taptext
+{
+	font-family: Monospace;
+	line-height: 0.9; 
+	margin: 10px;
+    font-weight: bold;
+}
+
+.taperror
+{
+	background-color: lightpink;
+}
+
+.tapok
+{
+	background-color: lightgreen;
+}
+
+.devbar
+{
+	background-color: yellow;
+	padding: 1px;
+	display: flex;
+}
+
+#btnUpload
+{
+	margin-left: 5px;
+	margin-right: 5px;
+}
+
+.columntitle
+{
+	margin: 0;
+}
+
+#suitestitle
+{
+	cursor: pointer;	
+}
+
+#uploadMsg
+{
+	margin: 0;
+	padding-right: 10px;
+	cursor: pointer;	
+}
+
+.row
+{
+}
+
+.clearfix
+{
+	overflow: auto;	
+}
+
+.column
+{
+	float: left;
+	padding: 10px;
+	overflow: auto;
+}
+
+.column.suitenav
+{
+	width: 30%;
+	background-color: lightgray;
+}
+
+.column.testinfo
+{
+	width: 70%;
+}
+
+.row::after
+{
+	content: "";
+	display: table;
+	clear: both;
+}
+
+.lowbar
+{
+	background-color: gray;
+	padding: 1px;
+	display: flex;
+}
+
+.footer
+{
+	background-color: lightgray;
+	padding-top: 5px;
+	text-align: center;
+}
+
+caption.suiteoverview
+{
+    font-size: large;
+    font-weight: bold;
+    text-align: left;
+    padding-bottom: 0.5em;
+}
+
+table.suiteoverview
+{
+    width: 100%;
+}
+
+th.suiteoverview
+{
+    font-weight: bold;
+    text-align: left;
+    vertical-align: top;
+}
+
+table.suiteoverview, th.suiteoverview, td.suiteoverview, th.suiteoverview
+{
+    border: 1px solid black;
+    border-collapse: collapse;
+    padding: 3px;
+    font-size: small;
+}
+
+caption.resultoverview
+{
+    font-size: large;
+    font-weight: bold;
+    text-align: left;
+    padding-bottom: 0.5em;
+}
+
+table.resultoverview
+{
+    width: 100%;
+}
+
+th.resultoverview
+{
+    font-weight: bold;
+    text-align: left;
+    vertical-align: top;
+}
+
+table.resultoverview, th.resultoverview, td.resultoverview, th.resultoverview
+{
+    border: 1px solid black;
+    border-collapse: collapse;
+    padding: 3px;
+    font-size: small;
+}

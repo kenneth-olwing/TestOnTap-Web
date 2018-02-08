@@ -1,0 +1,37 @@
+# misc utils
+#
+
+# a macro to check if any var in a list of names is undefined and if so, throw
+# an error usage:
+#
+# $(call macro_ifndef_err,<msg>,<list>)
+#
+define _gen_ifndef_err
+  ifndef $(1)
+    $$(warning Variable $(1) is undefined!)
+    $$(error $(2))
+  endif
+  # intentional empty line below!!!
+  
+endef
+macro_ifndef_err = $(eval $(foreach item,$(2),$(call _gen_ifndef_err,$(item),$(1))))
+                                                                                                                 
+# The 'at' (@) sign prefixed to to target commands makes them silent
+# Instead of using it directly, use it through the AT variable to
+# enable it to be turned off/on at will
+#
+# some_target :
+# 	$(AT)some_command
+#
+ifdef DEBUG_BUILD
+  at :=
+endif
+at ?= @
+
+# Using a comma (,) directly inside a make function causes it to be parsed as
+# just that - a comma signifying a new param.
+# If so use the variable COMMA instead.
+#
+comma := ,
+
+

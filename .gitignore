@@ -1,0 +1,7 @@
+local/
+logs/
+build/
+data/
+samples/RESULTS
+config_local.*
+environments/*_local.*
