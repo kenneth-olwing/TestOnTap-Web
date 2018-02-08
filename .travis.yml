@@ -1,0 +1,7 @@
+language: perl
+perl:
+  - '5.26'
+install:
+  - cpan App::cpanminus
+  - cpanm Carton ExtUtils::Command App::TestOnTap Hash::Merge::Simple
+script: make
