@@ -25,7 +25,9 @@ $(call macro_ifndef_err,Make sure "$(platform_settings_file)" is created and def
 basedir := $(call func_slashify,$(basedir))
 build_dir := $(call func_slashify,$(basedir)/build)
 data_dir := $(call func_slashify,$(basedir)/data)
+lib_dir := $(call func_slashify,$(basedir)/lib)
 carton_local_dir := $(call func_slashify,$(basedir)/local)
+carton_lib_dir := $(call func_slashify,$(carton_local_dir)/lib/perl5)
 production_logs_dir := $(call func_slashify,$(basedir)/logs)
 systemname := TestOnTap-Web
 systemver := $(shell git describe $(stderr_to_null))
@@ -45,4 +47,7 @@ else
 endif
 
 touch := perl $(make_helpers_path)/touch.pl
-rm_rf := perl $(make_helpers_path)/rm_rf.pl 
+rm_rf := perl $(make_helpers_path)/rm_rf.pl
+
+export PERL5LIB := $(lib_dir)$(listsep)$(carton_lib_dir)
+export TESTONTAP_PERL5LIB := $(PERL5LIB)

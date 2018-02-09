@@ -1,17 +1,12 @@
 use strict;
 use warnings;
 
-# expected to be in core
+# at this point, make files should have set PERL5LIB correctly
 #
 use Config;
-use FindBin qw($Bin);
 use File::Find;
 use Archive::Zip qw(:ERROR_CODES :CONSTANTS);
 use Hash::Merge::Simple qw(merge);
-
-# expected to be in our lib locations
-# 
-use lib ("$Bin/../lib", "$Bin/../local/perl5/lib");
 use Config::Any;
 use File::Basename;
 use Grep::Query;
