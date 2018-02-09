@@ -1,14 +1,9 @@
 use strict;
 use warnings;
 
-# expected to be in core
+# at this point, make files should have set PERL5LIB correctly (via TESTONTAP_PERL5LIB)
 #
-use FindBin qw($Bin);
 use Test::More;
-
-# expected to be in our lib locations
-# 
-use lib ("$Bin/../../lib", "$Bin/../../local/lib/perl5");
 use Plack::Test;
 use HTTP::Request::Common;
 
