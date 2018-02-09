@@ -5,7 +5,7 @@ use warnings;
 
 use TestOnTap::Web::Config;
 use TestOnTap::Web::Logger;
-use TestOnTap::Web::Util qw(slashify);
+use TestOnTap::Web::Util qw(slashify $LIST_SEP);
 
 use Archive::Zip;
 use JSON::PP; # XS f-ed up bcoz fork(), probably...
@@ -168,6 +168,9 @@ sub kickParser
 			$logdir,
 		);
 
+	local %ENV = %ENV;
+	$ENV{PERL5LIB} = join($LIST_SEP, @INC); 
+	
 	my $xit = 0;
 	if ($force)
 	{

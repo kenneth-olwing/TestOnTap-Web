@@ -1,16 +1,6 @@
 use strict;
 use warnings;
 
-use FindBin qw($Bin);
-
-my $localLibPath;
-BEGIN
-{
-	$localLibPath = "$Bin/../../local/lib/perl5";
-	warn("WARNING: '$localLibPath' missing - not configured or mispacked?\n") unless -d $localLibPath;
-}
-use lib ("$Bin/../../lib", $localLibPath);
-
 use TestOnTap::Web::TestResult;
 use TestOnTap::Web::Logger qw(applogger_init);
 

@@ -1,13 +1,9 @@
-use strict;
-use warnings;
-
-use FindBin qw($Bin);
 use Config;
 
 BEGIN
 {
 	my %ctx = (archname => '(unset)', perlver => '(unset)');	
-	my $ctxFile = "$Bin/../etc/build.context";
+	my $ctxFile = "$FindBin::Bin/../../etc/build.context";
 	if (-e $ctxFile)
 	{
 		open(my $fh, '<', $ctxFile) or die("Failed to open '$ctxFile': $!\n");
@@ -23,14 +19,6 @@ BEGIN
 		warn("WARNING: This distribution built on archname '$ctx{archname}' - now running under '$Config{archname}'\n") if ($ctx{archname} ne $Config{archname}); 
 	}
 }
-
-my $localLibPath;
-BEGIN
-{
-	$localLibPath = "$Bin/../local/lib/perl5";
-	warn("WARNING: '$localLibPath' missing - not configured or mispacked?\n") unless -d $localLibPath;
-}
-use lib ("$Bin/../lib", $localLibPath);
 
 use TestOnTap::Web::App;
 
