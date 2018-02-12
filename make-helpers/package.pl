@@ -48,11 +48,13 @@ sub searchDeps
 <<PQ
 	EQ(.dancer)
 		OR
-		(
-			REGEXP{^(bin|lib|local|public|views)/}
-				AND
-			NOT REGEXP{^local/(bin|cache)(/|\$)}
-		)
+	(
+		REGEXP{^(bin|lib|local|public|views)/}
+			AND
+		NOT REGEXP{^local/(bin|cache)(/|\$)}
+			AND
+		NOT REGEXP{^bin/.*_dev\.bat\$}
+	)
 PQ
 		);
 
@@ -123,7 +125,6 @@ sub mkzip
 		my $cfg = $cfgPair->[0]->{$fn};
 		$config = merge($config, $cfg);
 	}
-	$config->{environment} = 'production';
 	$config->{"##COMMENT##"} = "Avoid changing this file. Instead override values using a 'config_local.json' file";
 	$zip->addString(to_json($config, {utf8 => 1, pretty => 1, canonical => 1}), "$packagename/config.json")->desiredCompressionLevel(COMPRESSION_LEVEL_BEST_COMPRESSION);
 
