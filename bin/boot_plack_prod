@@ -1,0 +1,4 @@
+#! /bin/sh
+export BINDIR=$(realpath $(dirname $0))
+$BINDIR/_boot/_boot_plack -E production
+

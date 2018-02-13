@@ -1,0 +1,5 @@
+#! /bin/sh
+export DANCER_ENVIRONMENT=production
+export BINDIR=$(realpath $(dirname $0))
+$BINDIR/_boot/_boot_standalone
+
