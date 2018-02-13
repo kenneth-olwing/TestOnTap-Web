@@ -12,6 +12,8 @@ use JSON::PP; # XS f-ed up bcoz fork(), probably...
 use File::Basename;
 use File::Path qw(mkpath);
 
+$SIG{CHLD} = 'IGNORE';
+
 sub new
 {
 	my $class = shift;
@@ -33,7 +35,8 @@ sub new
 
 			if ($topName =~ m#\.\d{8}T\d{6}Z\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$#)
 			{
-				my $meta = decode_json(scalar($zip->contents("$topName/testontap/meta.json")));
+				my $metaContents = $zip->contents("$topName/testontap/meta.json");
+				my $meta = decode_json($metaContents);
 				
 				if ($meta->{format}->{major} == 1)
 				{
