@@ -49,5 +49,5 @@ endif
 touch := perl $(make_helpers_path)/touch.pl
 rm_rf := perl $(make_helpers_path)/rm_rf.pl
 
-export PERL5LIB := $(lib_dir)$(listsep)$(carton_lib_dir)
+export PERL5LIB := $(lib_dir)$(listsep)$(carton_lib_dir)$(listsep)$(PERL5LIB)
 export TESTONTAP_PERL5LIB := $(PERL5LIB)
