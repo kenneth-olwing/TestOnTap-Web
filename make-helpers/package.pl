@@ -48,10 +48,10 @@ sub searchDeps
 <<PQ
 	EQ(.dancer)
 		OR
-	REGEXP{^(bin|lib|local|public|views)/}
+	REGEXP{^(bin|lib|LOCAL|public|views)/}
 		AND NOT
 	(
-		REGEXP{^local/(bin|cache)(/|\$)}
+		REGEXP{^LOCAL/(bin|cache)(/|\$)}
 			OR
 		REGEXP{^bin/.*_dev\.bat\$}
 	)

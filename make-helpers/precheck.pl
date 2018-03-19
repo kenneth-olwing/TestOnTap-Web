@@ -12,6 +12,7 @@ foreach (
 					Carton
 					ExtUtils::Command
 					App::TestOnTap
+					Grep::Query
 					Hash::Merge::Simple
 					Config::Any
 				)

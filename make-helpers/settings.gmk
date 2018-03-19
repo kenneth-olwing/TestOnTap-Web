@@ -22,13 +22,21 @@ os_vars_required += func_slashify
 os_vars_required += SHELL
 $(call macro_ifndef_err,Make sure "$(platform_settings_file)" is created and defines the required variables,$(os_vars_required))
 
+ifdef DEBUG_BUILD
+  stdout_to_null :=
+  stderr_to_null :=
+else
+  stdout_to_null := $(stdout_to_null_pattern)
+  stderr_to_null := $(stderr_to_null_pattern)
+endif
+
 basedir := $(call func_slashify,$(basedir))
-build_dir := $(call func_slashify,$(basedir)/build)
-data_dir := $(call func_slashify,$(basedir)/data)
+build_dir := $(call func_slashify,$(basedir)/BUILD)
+data_dir := $(call func_slashify,$(basedir)/DATA)
 lib_dir := $(call func_slashify,$(basedir)/lib)
-carton_local_dir := $(call func_slashify,$(basedir)/local)
-carton_lib_dir := $(call func_slashify,$(carton_local_dir)/lib/perl5)
-production_logs_dir := $(call func_slashify,$(basedir)/logs)
+carton_root_dir := $(call func_slashify,$(basedir)/CARTON)
+carton_lib_dir := $(call func_slashify,$(carton_root_dir)/lib/perl5)
+logs_dir := $(call func_slashify,$(basedir)/LOGS)
 systemname := TestOnTap-Web
 systemver := $(shell git describe $(stderr_to_null))
 systemver := $(if $(systemver),$(systemver),$(shell perl $(make_helpers_path)/timestamp.pl))
@@ -38,12 +46,7 @@ testontap_opts := --merge --archive --savedirectory $(build_dir) --define system
 testontap_suite_dir := $(call func_slashify,$(basedir)/testsuites/testsuite-testontap-web-dev-mock)
 
 ifdef DEBUG_BUILD
-  stdout_to_null :=
-  stderr_to_null :=
   testontap_opts := --verbose --timer $(testontap_opts) --no-merge
-else
-  stdout_to_null := $(stdout_to_null_pattern)
-  stderr_to_null := $(stderr_to_null_pattern)
 endif
 
 touch := perl $(make_helpers_path)/touch.pl

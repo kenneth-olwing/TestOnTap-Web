@@ -1,7 +1,7 @@
-local/
-logs/
-build/
-data/
+CARTON/
+LOGS/
+BUILD/
+DATA/
 samples/RESULTS
 config_local.*
 environments/*_local.*
