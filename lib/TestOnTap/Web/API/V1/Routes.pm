@@ -104,6 +104,27 @@ post '/render/:type' => sub
 
 			$data->{tap} = \@tap;
 		}
+		elsif ($type eq 'suiteartifactstop')
+		{
+			my $tr = TestOnTap::Web::TestResult->new("$appconfig->{datadir}/results/$data->{zipfile}");
+			my $artifacts = $tr->getSuiteArtifacts();
+			
+			my %tree;
+			foreach my $line (@$artifacts)
+			{
+				my $loc = \%tree;
+				foreach my $part (split(m#/#, $line), undef)
+				{
+					if (defined($part))
+					{
+						$loc->{$part} = {} unless exists($loc->{$part});
+						$loc = $loc->{$part}; 
+					}
+				}
+			}
+
+			$data->{htmlized} = htmlize(\%tree, $data);
+		}
 		elsif ($type eq 'suiteartifacts')
 		{
 			my $tr = TestOnTap::Web::TestResult->new("$appconfig->{datadir}/results/$data->{zipfile}");
@@ -126,7 +147,7 @@ post '/render/:type' => sub
 			$data->{htmlized} = htmlize(\%tree, $data);
 		}
 
-		template(${type}, $data);
+		template($type, $data);
 	};
 	
 get '/suites' => sub
@@ -200,5 +221,6 @@ sub htmlize
 	}
 	
 	return $list;
-}	
+}
+
 true;

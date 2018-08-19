@@ -83,6 +83,9 @@ function updateSuiteTree(firstTime)
 										case 'suiteartifacts':
 											renderSuiteArtifacts(node);
 											break;
+										case 'suiteartifactstop':
+											renderSuiteArtifactsTop(node);
+											break;
 										default:
 											alert("UNKNOWN");
 									}
@@ -174,6 +177,26 @@ function renderSuiteArtifacts(node)
 	nd.zipfile = result.data.zipfile;
 	nd.name = test.data.name;
 	$('#infotitle').text("Suite artifacts from '" + test.data.name + "'");
+	$.ajax(
+			{
+				url : '/api/v1/render/' + nd.type,
+				type : 'POST',
+				data : JSON.stringify(nd),
+				contentType: "application/json; charset=utf-8",
+				success : function(html)
+					{
+						$('#infobox').html(html);
+					}
+			});
+}
+
+function renderSuiteArtifactsTop(node)
+{
+	var tree = $('#suitenavtree').jstree(true)
+	var test = tree.get_node(node.parent);
+	var nd = node.data;
+	nd.zipfile = test.data.zipfile;
+	$('#infotitle').text("All suite artifacts from '" + test.data.suitename + "'");
 	$.ajax(
 			{
 				url : '/api/v1/render/' + nd.type,

@@ -122,7 +122,7 @@ sub main
 						my @children =
 							(
 								{
-									text => 'Suite artifacts', 
+									text => 'Artifacts', 
 									data =>
 										{
 											type => 'suiteartifacts',
@@ -151,6 +151,8 @@ sub main
 							};
 						push(@testChildren, $data);
 					}
+					
+					push(@testChildren, { a_attr => { href => '' }, text => 'All artifacts', data => { type => 'suiteartifactstop' }});
 					
 					my $resultdata =
 						{

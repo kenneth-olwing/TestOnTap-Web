@@ -14,6 +14,8 @@ use File::Path qw(mkpath);
 
 $SIG{CHLD} = 'IGNORE';
 
+my $NEWERR;
+
 sub new
 {
 	my $class = shift;
@@ -24,7 +26,9 @@ sub new
 	my $topName;
 	my $summary;
 	my $testinfo;
-	
+
+	$NEWERR = undef;
+		
 	my $zip = Archive::Zip->new($zipFile);
 	if ($zip)
 	{
@@ -57,27 +61,29 @@ sub new
 					}
 					else
 					{
-						appdebug("Only partial result in '$zipFile'");
+						$NEWERR = "Only partial result";
 					}
 				}
 				else
 				{
-					appdebug("Unexpected major version in '$zipFile': $meta->{format}->{major}");
+					$NEWERR = "Unexpected major version: $meta->{format}->{major}";
 				}
 			}
 			else
 			{
-				appdebug("Unexpected members in '$zipFile': @memberNames");
+				$NEWERR = "Unexpected members: @memberNames";
 			}
 		}
 		
-		appdebug("Invalid result zip '$zipFile'") unless $topName;
+		$NEWERR = "Invalid result zip" unless $topName;
 	}
 	else
 	{
-		appdebug("Failed to load '$zipFile'");
+		$NEWERR = "Failed to load";
 	}
 
+	appdebug("$zipFile: $NEWERR") if $NEWERR;
+	
 	return $self;
 }
 
@@ -130,7 +136,7 @@ sub validateUpload
 			{
 				$errors++;
 				$answer{files}->{$fn}->{result} = 2;
-				$answer{files}->{$fn}->{msg} = "ERROR: invalid test result zip";
+				$answer{files}->{$fn}->{msg} = "ERROR: invalid test result zip ($NEWERR)";
 			}
 		}
 
@@ -418,7 +424,11 @@ sub getSuiteArtifactContentsForTest
 	my $name = shift;
 	my $sa = shift;
 	
-	return $self->{zip}->contents("$self->{topname}/suite/$name/$sa");
+	my $p = $name ? "$self->{topname}/suite/$name/$sa" : "$self->{topname}/suite/$sa";
+	
+	appdebug("getting contents for '$p'");
+	
+	return $self->{zip}->contents($p);
 }
 	
 1;

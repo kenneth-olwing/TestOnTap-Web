@@ -127,6 +127,7 @@ DISTRIBUTIONS
       File::Temp 0
       IO::Handle 0
       Scalar::Util 0
+      Win32API::File 0
       perl 5.006
       strict 0
       warnings 0
@@ -991,6 +992,7 @@ DISTRIBUTIONS
       Carp 0
       Exporter 5.57
       ExtUtils::MakeMaker 0
+      ExtUtils::PL2Bat 0
       File::Basename 0
       File::Copy 0
       File::Spec::Functions 0
@@ -1055,6 +1057,18 @@ DISTRIBUTIONS
       File::Spec 0.8
       Pod::Man 0
       perl 5.006
+  ExtUtils-PL2Bat-0.001
+    pathname: L/LE/LEONT/ExtUtils-PL2Bat-0.001.tar.gz
+    provides:
+      ExtUtils::PL2Bat 0.001
+    requirements:
+      Carp 0
+      Exporter 0
+      ExtUtils::MakeMaker 0
+      base 0
+      perl 5.006
+      strict 0
+      warnings 0
   File-ShareDir-1.104
     pathname: R/RE/REHSACK/File-ShareDir-1.104.tar.gz
     provides:
@@ -1376,7 +1390,7 @@ DISTRIBUTIONS
       File::Copy 0
       File::Find 0
       File::Path 0
-      File::Spec 0.82
+      File::Spec 3.3
       File::Temp 0.15
       Getopt::Long 0
       Module::Metadata 1.000002
@@ -1982,7 +1996,6 @@ DISTRIBUTIONS
       Template::Tiny 1.12
     requirements:
       ExtUtils::MakeMaker 0
-      Test::More 0.47
       perl 5.00503
   Template-Toolkit-2.27
     pathname: A/AB/ABW/Template-Toolkit-2.27.tar.gz
