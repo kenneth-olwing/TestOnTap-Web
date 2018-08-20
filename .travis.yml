@@ -11,5 +11,5 @@ perl:
   - '5.10'
 install:
   - wget -O- http://cpanmin.us | perl - App::cpanminus
-  - cpanm Carton ExtUtils::Command App::TestOnTap Hash::Merge::Simple Config::Any
+  - cpanm -v Carton ExtUtils::Command App::TestOnTap Hash::Merge::Simple Config::Any
 script: make
