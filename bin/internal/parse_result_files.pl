@@ -11,6 +11,7 @@ use Path::Tiny;
 use Getopt::Long;
 use File::Basename;
 use Fcntl qw(:flock);
+use IO::Handle;
 use JSON;
 
 $| = 1;
@@ -21,18 +22,16 @@ sub main
 {
 	my $datadir;
 	my $logdir;
-	my $force;
 	my $pretty;
 	
 	my $getopts = GetOptions
 					(
 						'datadir=s' => \$datadir,
 						'logdir=s' => \$logdir,
-						'force' => \$force,
 						'pretty' => \$pretty,
 					);
 	
-	die("usage: $0 --datadir <datadir> [--logdir <logdir>] [--force] [--pretty]\n")
+	die("usage: $0 --datadir <datadir> [--logdir <logdir>] [--pretty]\n")
 		unless
 			   $getopts
 			&& $datadir && -d $datadir
@@ -48,6 +47,8 @@ sub main
 				error => $logger,
 			}
 		);
+
+	my $scriptlock = lockFile(($logdir || $datadir) . '/' . basename($0) . ".lock");
 	
 	setupWithLog($logdir) if $logdir;
 	
@@ -56,198 +57,203 @@ sub main
 
 	print "=== START: " . localtime() . "\n";
 
-	my $repeat = 1;
-	while ($repeat)
-	{	
-		my $suitesJsonFile = "$datadir/suites.json";
-		my $tsSuitesJsonFile = (stat($suitesJsonFile))[9] || 0;
-		
-		my @zipFiles = sort(glob("$datadir/results/*.zip"));
-		my $tsNewestZipFile = 1;
-		foreach my $zipFile (@zipFiles)
-		{
-			my $tsZipFile = (stat($zipFile))[9];
-			$tsNewestZipFile = $tsZipFile if $tsZipFile > $tsNewestZipFile;
-		}
+	my $suitesJsonFile = "$datadir/suites.json";
+	my $tsSuitesJsonFile = (stat($suitesJsonFile))[9] || 0;
 	
-		if ($force || $tsNewestZipFile > $tsSuitesJsonFile)
+	my $json = JSON->new()->utf8();
+	$json->pretty() if $pretty;
+
+	my $p = path($suitesJsonFile);
+	my $jsondata;
+	my %existingSuiteIds;
+	my %existingRunIds;
+	foreach my $zipFile (sort(glob("$datadir/results/*.zip")))
+	{
+		if ((stat($zipFile))[9] > $tsSuitesJsonFile)
 		{
-			my %suite2name;
-			my %name2suite;
-			my %suite2objs;
-			foreach my $zipFile (@zipFiles)
+			my $obj = TestOnTap::Web::TestResult->new($zipFile);
+			if (!$obj)
 			{
-				my $obj = TestOnTap::Web::TestResult->new($zipFile);
-				if (!$obj)
+				warn("Not a test result, skipping: '$zipFile'\n");
+				next;
+			}
+			print "Loaded '$zipFile'\n";
+
+			my $name = $obj->getSuiteName();
+			my $suiteid = $obj->getSuiteId();
+			my $runid = $obj->getRunid();
+
+			if (!$jsondata)
+			{
+				$jsondata = [];
+				my $lock = lockFile("$suitesJsonFile.lock");
+				$jsondata = $json->decode($p->slurp()) if $p->is_file();
+				unlockFile($lock);
+				my $sz = scalar(@$jsondata);
+				for my $ndx (0..$sz - 1)
 				{
-					warn("Not a test result, skipping: '$zipFile'\n");
-					next;
+					my $suitedata = $jsondata->[$ndx];
+					my @elapsedTimes;
+					foreach my $suitechild (@{$suitedata->{children}})
+					{
+						push(@elapsedTimes, $suitechild->{data}->{elapsedtime});
+						$existingRunIds{$suitechild->{id}} = $suitedata->{id};
+					}
+					$existingSuiteIds{$suitedata->{id}} = { ndx => $ndx, testcount => scalar(@elapsedTimes), elapsedtimes => \@elapsedTimes };
 				}
-				print "Loaded '$zipFile'\n";
-		
-				my ($suiteId, $suiteName) = ($obj->getSuiteId() => $obj->getSuiteName());
-				if (exists($name2suite{$suiteName}) && $name2suite{$suiteName} ne $suiteId)
-				{
-					warn("Reuse of suitename between $name2suite{$suiteName} and $suiteId, skipping: '$zipFile'\n");
-					next;
-				} 
-				
-				$suite2name{$suiteId} = $suiteName;
-				$name2suite{$suiteName} = $suiteId;
-				
-				my $objs = $suite2objs{$suiteId} || [];
-				push(@$objs, $obj);
-				$suite2objs{$suiteId} = $objs;
+			}
+			if (exists($existingRunIds{$runid}))
+			{
+				warn("Already indexed test result, skipping: '$zipFile'\n");
+				next;
+			}
+
+			my $totalTestCount = 1;
+			my @elapsedTimes;
+			if (exists($existingSuiteIds{$suiteid}))
+			{
+				$totalTestCount += $existingSuiteIds{$suiteid}->{testcount};
+				push(@elapsedTimes, @{$existingSuiteIds{$suiteid}->{elapsedtimes}});
 			}
 			
-			my @jstreeData;
-			foreach my $name (sort(keys(%name2suite)))
+			my @children;
+			my @testChildren;
+			foreach my $test (@{$obj->getTestNames()})
 			{
-				my $suiteId = $name2suite{$name};
-				my $objs = $suite2objs{$suiteId};
-				
-				my @elapsedTimes;
-				
-				my @children;
-				foreach my $obj (@$objs)
-				{
-					my $startDt = DateTime::Format::ISO8601->parse_datetime($obj->getBegin());
-        			my $endDt = DateTime::Format::ISO8601->parse_datetime($obj->getEnd());
-        			push(@elapsedTimes, $endDt->epoch() - $startDt->epoch());					
-
-					my @testChildren;
-					
-					foreach my $test (@{$obj->getTestNames()})
-					{
-						my @children =
-							(
-								{
-									text => 'Artifacts', 
-									data =>
-										{
-											type => 'suiteartifacts',
-										},
-									a_attr =>
-										{
-											href => ''
-										}
-								}
-							);
-						
-						my $data =
-							{
-								text => $test,
-								children => \@children, 
-								data =>
-									{
-										type => 'test',
-										name => $test,
-									},
-								a_attr =>
-									{
-										href => '',
-										$obj->getResultForTest($test)->{has_problems} ? (style => 'color: red;') : (),
-									}
-							};
-						push(@testChildren, $data);
-					}
-					
-					push(@testChildren, { a_attr => { href => '' }, text => 'All artifacts', data => { type => 'suiteartifactstop' }});
-					
-					my $resultdata =
+				my @children =
+					(
 						{
-							id => $obj->getRunid(),
-							text => $obj->getBegin(),
-							children => \@testChildren,
+							text => 'Artifacts', 
 							data =>
 								{
-									type => 'result',
-									zipfile => basename($obj->getFilename()),
-									timestamp => $obj->getBegin(),
-									suitename => $name,
+									type => 'suiteartifacts',
 								},
 							a_attr =>
 								{
-									title => $obj->getRunid(),
-									href => '',
-									$obj->getAllPassed() ? () : (style => 'color: red;'),
+									href => ''
 								}
-						};
-					push(@children, $resultdata);
-				}
-
-				my $maxElapsed = 'N/A';
-				my $minElapsed = 'N/A';
-				my $avgElapsed = 'N/A';
-				my $medianElapsed = 'N/A';
-				if (@elapsedTimes)
-				{
-					$maxElapsed = concise(duration(max(@elapsedTimes)));
-					$minElapsed = concise(duration(min(@elapsedTimes)));
-					$avgElapsed = concise(duration(int(sum(@elapsedTimes) / scalar(@elapsedTimes))));
-					if (@elapsedTimes == 1)
+						}
+					);
+						
+				my $data =
 					{
-						$medianElapsed = $elapsedTimes[0];
-					}
-					elsif (@elapsedTimes % 2 == 0)
-					{
-						my $half = @elapsedTimes/2;
-						$medianElapsed = ($elapsedTimes[$half - 1] + $elapsedTimes[$half])/2;
-					}
-					else
-					{
-						$medianElapsed = $elapsedTimes[int(@elapsedTimes/2)];
-					}
-					$medianElapsed = concise(duration($medianElapsed));
-				}
-				
-				my $suitedata =
-					{
-						id => $suiteId,
-						text => $name,
-						children => \@children,
+						text => $test,
+						children => \@children, 
 						data =>
 							{
-								type => 'suite',
-								name => $name,
-								resultcount => scalar(@$objs),
-								elapsed =>
-									{
-										average => $avgElapsed,
-										max => $maxElapsed,
-										min => $minElapsed,
-										median => $medianElapsed
-									}
+								type => 'test',
+								name => $test,
 							},
 						a_attr =>
 							{
-								title => $suiteId,
-								href => ''
+								href => '',
+								$obj->getResultForTest($test)->{has_problems} ? (style => 'color: red;') : (),
 							}
 					};
-				push(@jstreeData, $suitedata);
+				push(@testChildren, $data);
 			}
-			my $lock = lockFile("$suitesJsonFile.lock");
-			my $p = path($suitesJsonFile);
-			my $json = JSON->new()->utf8();
-			$json->pretty() if $pretty;
-			my $data = $json->encode(\@jstreeData);
-			$p->spew_raw($data);
-			$p->touch($tsNewestZipFile);
-			print "$suitesJsonFile updated\n";
-			unlockFile($lock);
+				
+			push(@testChildren, { a_attr => { href => '' }, text => 'All artifacts', data => { type => 'suiteartifactstop' }});
 			
-			$repeat = 0 if $force;
-		}
-		else
-		{
-			print "$suitesJsonFile is up to date\n";
-			$repeat = 0;
+			my $startDt = DateTime::Format::ISO8601->parse_datetime($obj->getBegin());
+			my $endDt = DateTime::Format::ISO8601->parse_datetime($obj->getEnd());
+			my $elapsedTime = $endDt->epoch() - $startDt->epoch();
+			push(@elapsedTimes, $elapsedTime);
+			my $resultdata =
+				{
+					id => $obj->getRunid(),
+					text => $obj->getBegin(),
+					children => \@testChildren,
+					data =>
+						{
+							type => 'result',
+							zipfile => basename($obj->getFilename()),
+							timestamp => $obj->getBegin(),
+							elapsedtime => $elapsedTime,
+							suitename => $name,
+						},
+					a_attr =>
+						{
+							title => $obj->getRunid(),
+							href => '',
+							$obj->getAllPassed() ? () : (style => 'color: red;'),
+						}
+				};
+			push(@children, $resultdata);
+
+			my $maxElapsed = 'N/A';
+			my $minElapsed = 'N/A';
+			my $avgElapsed = 'N/A';
+			my $medianElapsed = 'N/A';
+			$maxElapsed = concise(duration(max(@elapsedTimes)));
+			$minElapsed = concise(duration(min(@elapsedTimes)));
+			$avgElapsed = concise(duration(int(sum(@elapsedTimes) / scalar(@elapsedTimes))));
+			if (@elapsedTimes == 1)
+			{
+				$medianElapsed = $elapsedTimes[0];
+			}
+			elsif (@elapsedTimes % 2 == 0)
+			{
+				my $half = @elapsedTimes/2;
+				$medianElapsed = ($elapsedTimes[$half - 1] + $elapsedTimes[$half])/2;
+			}
+			else
+			{
+				$medianElapsed = $elapsedTimes[int(@elapsedTimes/2)];
+			}
+			$medianElapsed = concise(duration($medianElapsed));
+		
+			my $suitedata =
+				{
+					id => $suiteid,
+					text => $name,
+					children => \@children,
+					data =>
+						{
+							type => 'suite',
+							name => $name,
+							resultcount => $totalTestCount,
+							elapsed =>
+								{
+									average => $avgElapsed,
+									max => $maxElapsed,
+									min => $minElapsed,
+									median => $medianElapsed
+								}
+						},
+					a_attr =>
+						{
+							title => $suiteid,
+							href => ''
+						}
+				};
+	
+			if (exists($existingSuiteIds{$suiteid}))
+			{
+				my $ndx = $existingSuiteIds{$suiteid}->{ndx};
+				push(@{$suitedata->{children}}, @{$jsondata->[$ndx]->{children}});
+				$jsondata->[$ndx] = $suitedata;
+				$existingSuiteIds{$suiteid} = { ndx => $ndx, testcount => $suitedata->{data}->{resultcount}, elapsedtimes => \@elapsedTimes }; 
+			}
+			else
+			{
+				push(@$jsondata, $suitedata);
+				$existingSuiteIds{$suiteid} = { ndx => scalar(@$jsondata) - 1, testcount => 1, elapsedtimes => [ $elapsedTime ] }; 
+			}
+			$existingRunIds{$runid} = $suiteid;
 		}
 
-		print "=== REPEAT: " . localtime() . "\n" if $repeat;
+		if ($jsondata && @$jsondata)
+		{
+			my $lock = lockFile("$suitesJsonFile.lock");
+			$p->append({ truncate => 1 }, $json->encode($jsondata));
+			print "$suitesJsonFile updated\n";
+			unlockFile($lock);
+		}
 	}
-		
+
+	unlockFile($scriptlock);
+
 	return 0;
 }
 
@@ -269,7 +275,7 @@ sub setupWithLog
 #	print "Stdout/err will be redirected to '$logfile'\n";
 		
 	open(my $fh, '>>', $logfile) or die("Failed to aopen '$logfile': $!\n");
-	flock($fh, LOCK_EX);
+	$fh->autoflush(1);
 	
 	*STDOUT = *STDERR = $fh;
 }

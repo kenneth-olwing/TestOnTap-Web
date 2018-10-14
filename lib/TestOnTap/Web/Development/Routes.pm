@@ -14,7 +14,7 @@ prefix '/development';
 
 post '/kickparser' => sub
 	{
-		TestOnTap::Web::TestResult->kickParser(1);
+		TestOnTap::Web::TestResult->kickParser();
 	};
 	
 get qr(/?) => sub

@@ -161,11 +161,10 @@ sub validateUpload
 sub kickParser
 {
 	my $class = shift;
-	my $force = shift || 0;
 	
 	my $logdir = slashify($config->{engines}->{logger}->{File}->{log_dir} || $appconfig->{datadir});
 	$logdir = slashify("$config->{appdir}/$logdir") unless File::Spec->file_name_is_absolute($logdir); 
-	appinfo("Kicking parser with logging in '$logdir' (force=$force)");
+	appinfo("Kicking parser with logging in '$logdir'");
 
 	my @cmd = 
 		(
@@ -180,32 +179,22 @@ sub kickParser
 	local %ENV = %ENV;
 	$ENV{PERL5LIB} = join($LIST_SEP, @INC); 
 	
-	my $xit = 0;
-	if ($force)
+	my $forkpid = fork();
+	if (defined($forkpid))
 	{
-		@cmd = (@cmd, '--force');
-		$xit = system(@cmd) >> 8;
-		appdebug("Ran parser, xit=$xit");
+		if ($forkpid == 0)
+		{
+			# child
+			my $xit = system(@cmd) >> 8;
+			exit($xit);
+		}
 	}
 	else
 	{
-		my $forkpid = fork();
-		if (defined($forkpid))
-		{
-			if ($forkpid == 0)
-			{
-				# child
-				$xit = system(@cmd) >> 8;
-				exit($xit);
-			}
-		}
-		else
-		{
-			apperror("Fork of parser failed!: $!");
-		}
+		apperror("Fork of parser failed!: $!");
 	}
 	
-	return $xit;
+	return;
 }
 
 ##

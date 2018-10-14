@@ -24,6 +24,6 @@ applogger_init
 
 require TestOnTap::Web::Development::Routes if config()->{environment} eq 'development';
 
-TestOnTap::Web::TestResult->kickParser(1) if config()->{environment} eq 'production';
+TestOnTap::Web::TestResult->kickParser() if config()->{environment} eq 'production';
 
 1;
