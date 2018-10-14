@@ -243,13 +243,10 @@ sub main
 			$existingRunIds{$runid} = $suiteid;
 		}
 
-		if ($jsondata && @$jsondata)
-		{
-			my $lock = lockFile("$suitesJsonFile.lock");
-			$p->append({ truncate => 1 }, $json->encode($jsondata));
-			print "$suitesJsonFile updated\n";
-			unlockFile($lock);
-		}
+		my $lock = lockFile("$suitesJsonFile.lock");
+		$p->append({ truncate => 1 }, $json->encode($jsondata));
+		print "$suitesJsonFile updated\n";
+		unlockFile($lock);
 	}
 
 	unlockFile($scriptlock);
