@@ -159,12 +159,101 @@ sub main
 					my $days = $months->{$month}->{days};
 					foreach my $day (keys(%$days))
 					{
+						my @recordData;
+						my @elapsedTimes;
 						my $records = $days->{$day}->{records};
 						foreach my $runid (keys(%$records))
 						{
 							my $record = $records->{$runid};
+
+							my @testChildren;
+							foreach my $test (@{$record->{tests}})
+							{
+								my @children =
+									(
+										{
+											text => 'Artifacts', 
+											data =>
+												{
+													type => 'suiteartifacts',
+												},
+											a_attr =>
+												{
+													href => ''
+												}
+										}
+									);
+										
+								my $data =
+									{
+										text => $test->{name},
+										children => \@children, 
+										data =>
+											{
+												type => 'test',
+												name => $test->{name},
+											},
+										a_attr =>
+											{
+												href => '',
+												$test->{has_problems} ? (style => 'color: red;') : (),
+											}
+									};
+								push(@testChildren, $data);
+		
+							}
+
+							push(@testChildren, { a_attr => { href => '' }, text => 'All artifacts', data => { type => 'suiteartifactstop' }});
+					
+							my $startDt = DateTime::Format::ISO8601->parse_datetime($record->{begin});
+							my $endDt = DateTime::Format::ISO8601->parse_datetime($record->{end});
+							my $elapsedTime = $endDt->epoch() - $startDt->epoch();
+							push(@elapsedTimes, $elapsedTime);
+							my $resultdata =
+								{
+									id => $record->{runid},
+									text => $record->{begin},
+									children => \@testChildren,
+										data =>
+											{
+												type => 'result',
+												zipfile => $record->{zip},
+												timestamp => $record->{begin},
+												elapsedtime => $elapsedTime,
+												suitename => $record->{name},
+											},
+										a_attr =>
+											{
+												title => $record->{runid},
+												href => '',
+												$record->{allpassed} ? () : (style => 'color: red;'),
+											}
+								};
+							push(@recordData, $resultdata);
+
+							my $maxElapsed = 'N/A';
+							my $minElapsed = 'N/A';
+							my $avgElapsed = 'N/A';
+							my $medianElapsed = 'N/A';
+							$maxElapsed = concise(duration(max(@elapsedTimes)));
+							$minElapsed = concise(duration(min(@elapsedTimes)));
+							$avgElapsed = concise(duration(int(sum(@elapsedTimes) / scalar(@elapsedTimes))));
+							if (@elapsedTimes == 1)
+							{
+								$medianElapsed = $elapsedTimes[0];
+							}
+							elsif (@elapsedTimes % 2 == 0)
+							{
+								my $half = @elapsedTimes/2;
+								$medianElapsed = ($elapsedTimes[$half - 1] + $elapsedTimes[$half])/2;
+							}
+							else
+							{
+								$medianElapsed = $elapsedTimes[int(@elapsedTimes/2)];
+							}
+							$medianElapsed = concise(duration($medianElapsed));
 						}
-						
+
 						push(@dayData,
 								{
 									text => $day,
@@ -182,7 +271,7 @@ sub main
 											resultcount => 1,
 											name => "$suiteName - $year - $month - $day",
 										},
-									children => [],
+									children => \@recordData,
 								});
 					}
 					
