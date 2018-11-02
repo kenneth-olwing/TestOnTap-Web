@@ -118,7 +118,7 @@ function updateSuiteTree(firstTime)
 
 function renderSuite(node)
 {
-	$('#infotitle').text(node.data.name + " (suite id: " + node.id + ")");
+	$('#infotitle').text(node.data.name);
 	$.ajax(
 			{
 				url : '/api/v1/render/' + node.data.type,
