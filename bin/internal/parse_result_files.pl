@@ -23,12 +23,14 @@ sub main
 	my $datadir;
 	my $logdir;
 	my $pretty;
+	my $force;
 	
 	my $getopts = GetOptions
 					(
 						'datadir=s' => \$datadir,
 						'logdir=s' => \$logdir,
 						'pretty' => \$pretty,
+						'force' => \$force,
 					);
 	
 	die("usage: $0 --datadir <datadir> [--logdir <logdir>] [--pretty]\n")
@@ -57,19 +59,19 @@ sub main
 
 	print "=== START: " . localtime() . "\n";
 
-	my $suitesJsonFile = "$datadir/suites.json";
-	my $tsSuitesJsonFile = (stat($suitesJsonFile))[9] || 0;
+	my $dbJsonFile = "$datadir/db.json";
+	my $tsDbJsonFile = $force ? 0 : (stat($dbJsonFile))[9] || 0;
 	
 	my $json = JSON->new()->utf8();
 	$json->pretty() if $pretty;
-
-	my $p = path($suitesJsonFile);
-	my $jsondata;
-	my %existingSuiteIds;
-	my %existingRunIds;
+	
+	my $pathDbJson = path($dbJsonFile);
+	my $dbJson = {}; 
+	$dbJson = $json->decode($pathDbJson->slurp()) if $pathDbJson->is_file() && !$force;
+	my $dbRecords = scalar(keys(%$dbJson));
 	foreach my $zipFile (sort(glob("$datadir/results/*.zip")))
 	{
-		if ((stat($zipFile))[9] > $tsSuitesJsonFile)
+		if ((stat($zipFile))[9] > $tsDbJsonFile)
 		{
 			my $obj = TestOnTap::Web::TestResult->new($zipFile);
 			if (!$obj)
@@ -78,169 +80,273 @@ sub main
 				next;
 			}
 			print "Loaded '$zipFile'\n";
-
-			my $name = $obj->getSuiteName();
-			my $suiteid = $obj->getSuiteId();
+			
 			my $runid = $obj->getRunid();
-
-			if (!$jsondata)
+			next if $dbJson->{$runid};
+			my @tests;
+			foreach my $testName (@{$obj->getTestNames()})
 			{
-				$jsondata = [];
-				my $lock = lockFile("$suitesJsonFile.lock");
-				$jsondata = $json->decode($p->slurp()) if $p->is_file();
-				unlockFile($lock);
-				my $sz = scalar(@$jsondata);
-				for my $ndx (0..$sz - 1)
-				{
-					my $suitedata = $jsondata->[$ndx];
-					my @elapsedTimes;
-					foreach my $suitechild (@{$suitedata->{children}})
-					{
-						push(@elapsedTimes, $suitechild->{data}->{elapsedtime});
-						$existingRunIds{$suitechild->{id}} = $suitedata->{id};
-					}
-					$existingSuiteIds{$suitedata->{id}} = { ndx => $ndx, testcount => scalar(@elapsedTimes), elapsedtimes => \@elapsedTimes };
-				}
+				push(@tests, { name => $testName, has_problems => $obj->getResultForTest($testName)->{has_problems} });
 			}
-			if (exists($existingRunIds{$runid}))
+			$dbJson->{$runid} =
+						{
+							runid => $runid,
+							name => $obj->getSuiteName(),
+							suiteid => $obj->getSuiteId(),
+							begin => $obj->getBegin(),
+							end => $obj->getEnd(),
+							zip => basename($obj->getFilename()),
+							allpassed => $obj->getAllPassed(),
+							tests => \@tests,
+						};
+		}
+	}
+	$pathDbJson->spew_raw($json->encode($dbJson)) if (scalar(keys(%$dbJson)) != $dbRecords);
+	
+	$tsDbJsonFile = (stat($dbJsonFile))[9] || 0;
+	my $suitesJsonFile = "$datadir/suites.json";
+	my $tsSuitesJsonFile = (stat($suitesJsonFile))[9] || 0;
+	my $p = path($suitesJsonFile);
+	if ($tsDbJsonFile > $tsSuitesJsonFile)
+	{
+		my $jsondata = [];
+
+		my %suiteNames;
+		my %suiteIds;
+		foreach my $runid (keys(%{$dbJson}))
+		{
+			my $dbRecord = $dbJson->{$runid};
+			my $suiteId = $dbRecord->{suiteid};
+			my $suiteName = $dbRecord->{name};
+			my $startDt = DateTime::Format::ISO8601->parse_datetime($dbRecord->{begin});
+			my $recordYear = sprintf("%04d", $startDt->year());			
+			my $recordMonth = sprintf("%02d", $startDt->month());			
+			my $recordDay = sprintf("%02d", $startDt->day());
+			if (exists($suiteIds{$suiteId}) && $suiteIds{$suiteId} ne $suiteName)
 			{
-				warn("Already indexed test result, skipping: '$zipFile'\n");
+				warn("Duplicate suiteid, different suitename: $suiteId/$suiteIds{$suiteId} vs $suiteId/$suiteName in run $runid - skipping\n");
+				next;
+			}			
+			if (exists($suiteNames{$suiteName}) && $suiteNames{$suiteName}->{suiteid} ne $suiteId)
+			{
+				warn("Duplicate suitename, different suiteid: $suiteName/$suiteNames{$suiteName}->{suiteid} vs $suiteId/$suiteName in run $runid - skipping\n");
 				next;
 			}
+			$suiteIds{$suiteId} = $suiteName;
+			$suiteNames{$suiteName} = { suiteid => $suiteId, years => {} };
+			my $years = $suiteNames{$suiteName}->{years};
+			$years->{$recordYear} = { months => {} } unless exists($years->{$recordYear});
+			my $months = $years->{$recordYear}->{months};
+			$months->{$recordMonth} = { days => {} } unless exists($months->{$recordMonth});
+			my $days = $months->{$recordMonth}->{days};
+			$days->{$recordDay} = { records => {} } unless exists($days->{$recordDay});
+			my $records = $days->{$recordDay}->{records};
+			$records->{$runid} = $dbRecord;
+		}
 
-			my $totalTestCount = 1;
-			my @elapsedTimes;
-			if (exists($existingSuiteIds{$suiteid}))
-			{
-				$totalTestCount += $existingSuiteIds{$suiteid}->{testcount};
-				push(@elapsedTimes, @{$existingSuiteIds{$suiteid}->{elapsedtimes}});
-			}
+		foreach my $suiteName (keys(%suiteNames))
+		{
+			my $suiteId = $suiteNames{$suiteName}->{suiteid};
 			
-			my @children;
-			my @testChildren;
-			foreach my $test (@{$obj->getTestNames()})
+			my @yearElapsedTimes;
+			my @yearData;
+			my $years = $suiteNames{$suiteName}->{years};
+			foreach my $year (keys(%$years))
 			{
-				my @children =
-					(
+				my @monthElapsedTimes;
+				my @monthData;
+				my $months = $years->{$year}->{months};
+				foreach my $month (keys(%$months))
+				{
+					my @dayElapsedTimes;
+					my @dayData;
+					my $days = $months->{$month}->{days};
+					foreach my $day (keys(%$days))
+					{
+						my @recordElapsedTimes;
+						my @recordData;
+						my $records = $days->{$day}->{records};
+						foreach my $runid (keys(%$records))
 						{
-							text => 'Artifacts', 
+							my $record = $records->{$runid};
+
+							my @testChildren;
+							foreach my $test (@{$record->{tests}})
+							{
+								my @children =
+									(
+										{
+											text => 'Artifacts', 
+											data =>
+												{
+													type => 'suiteartifacts',
+												},
+											a_attr =>
+												{
+													href => ''
+												}
+										}
+									);
+										
+								my $data =
+									{
+										text => $test->{name},
+										children => \@children, 
+										data =>
+											{
+												type => 'test',
+												name => $test->{name},
+											},
+										a_attr =>
+											{
+												href => '',
+												$test->{has_problems} ? (style => 'color: red;') : (),
+											}
+									};
+								push(@testChildren, $data);
+		
+							}
+
+							push(@testChildren, { a_attr => { href => '' }, text => 'All artifacts', data => { type => 'suiteartifactstop' }});
+					
+							my $startDt = DateTime::Format::ISO8601->parse_datetime($record->{begin});
+							my $endDt = DateTime::Format::ISO8601->parse_datetime($record->{end});
+							my $elapsedTime = $endDt->epoch() - $startDt->epoch();
+							push(@recordElapsedTimes, $elapsedTime);
+							my $resultdata =
+								{
+									id => $record->{runid},
+									text => $record->{begin},
+									children => \@testChildren,
+										data =>
+											{
+												type => 'result',
+												zipfile => $record->{zip},
+												timestamp => $record->{begin},
+												elapsedtime => $elapsedTime,
+												suitename => $record->{name},
+												allpassed => $record->{allpassed},
+											},
+										a_attr =>
+											{
+												title => $record->{runid},
+												href => '',
+												$record->{allpassed} ? () : (style => 'color: red;'),
+											}
+								};
+							push(@recordData, $resultdata);
+						}
+
+						my $allpassedCount = 0;
+						$allpassedCount += $_->{data}->{allpassed} foreach (@recordData);
+						my $allpassed = $allpassedCount == scalar(@recordData) ? 1 : 0;
+						push(@dayData,
+								{
+									text => $day,
+									id => "$year-$month-$day-$suiteId",
+									data =>
+										{
+											type => 'suite',
+											elapsed => calcElapsed(\@recordElapsedTimes),
+											resultcount => scalar(@recordData),
+											name => "$suiteName - $year - $month - $day",
+											allpassed => $allpassed,
+										},
+									children => \@recordData,
+									a_attr =>
+										{
+											href => '',
+											$allpassed ? () : (style => 'color: red;'),
+										}
+								});
+						push(@dayElapsedTimes, @recordElapsedTimes);
+					}
+					
+					my $resultCount = 0;
+					$resultCount += $_->{data}->{resultcount} foreach (@dayData);
+					my $allpassedCount = 0;
+					$allpassedCount += $_->{data}->{allpassed} foreach (@dayData);
+					my $allpassed = $allpassedCount == scalar(@dayData) ? 1 : 0;
+					push(@monthData,
+							{
+								text => $month,
+								id => "$year-$month-$suiteId",
+								data =>
+									{
+										type => 'suite',
+										elapsed => calcElapsed(\@dayElapsedTimes),
+										resultcount => $resultCount,
+										name => "$suiteName - $year - $month",
+										allpassed => $allpassed,
+									},
+								children => \@dayData,
+								a_attr =>
+									{
+										href => '',
+										$allpassed ? () : (style => 'color: red;'),
+									}
+							});
+					push(@monthElapsedTimes, @dayElapsedTimes);
+				}
+				
+				my $resultCount = 0;
+				$resultCount += $_->{data}->{resultcount} foreach (@monthData);
+				my $allpassedCount = 0;
+				$allpassedCount += $_->{data}->{allpassed} foreach (@monthData);
+				my $allpassed = $allpassedCount == scalar(@monthData) ? 1 : 0;
+				push(@yearData,
+						{
+							text => $year,
+							id => "$year-$suiteId",
 							data =>
 								{
-									type => 'suiteartifacts',
+									type => 'suite',
+									elapsed => calcElapsed(\@monthElapsedTimes),
+									resultcount => $resultCount,
+									name => "$suiteName - $year",
+									allpassed => $allpassed,
 								},
+							children => \@monthData,
 							a_attr =>
 								{
-									href => ''
+									href => '',
+									$allpassed ? () : (style => 'color: red;'),
 								}
-						}
-					);
-						
-				my $data =
-					{
-						text => $test,
-						children => \@children, 
-						data =>
-							{
-								type => 'test',
-								name => $test,
-							},
-						a_attr =>
-							{
-								href => '',
-								$obj->getResultForTest($test)->{has_problems} ? (style => 'color: red;') : (),
-							}
-					};
-				push(@testChildren, $data);
+						});
+				push(@yearElapsedTimes, @monthElapsedTimes);
 			}
-				
-			push(@testChildren, { a_attr => { href => '' }, text => 'All artifacts', data => { type => 'suiteartifactstop' }});
 			
-			my $startDt = DateTime::Format::ISO8601->parse_datetime($obj->getBegin());
-			my $endDt = DateTime::Format::ISO8601->parse_datetime($obj->getEnd());
-			my $elapsedTime = $endDt->epoch() - $startDt->epoch();
-			push(@elapsedTimes, $elapsedTime);
-			my $resultdata =
-				{
-					id => $obj->getRunid(),
-					text => $obj->getBegin(),
-					children => \@testChildren,
-					data =>
-						{
-							type => 'result',
-							zipfile => basename($obj->getFilename()),
-							timestamp => $obj->getBegin(),
-							elapsedtime => $elapsedTime,
-							suitename => $name,
-						},
+			my $resultCount = 0;
+			$resultCount += $_->{data}->{resultcount} foreach (@yearData);
+			my $allpassedCount = 0;
+			$allpassedCount += $_->{data}->{allpassed} foreach (@yearData);
+			my $allpassed = $allpassedCount == scalar(@yearData) ? 1 : 0;
+			my %suiteData =
+				(
+					text => $suiteName,
+					id => $suiteId,
 					a_attr =>
 						{
-							title => $obj->getRunid(),
-							href => '',
-							$obj->getAllPassed() ? () : (style => 'color: red;'),
-						}
-				};
-			push(@children, $resultdata);
-
-			my $maxElapsed = 'N/A';
-			my $minElapsed = 'N/A';
-			my $avgElapsed = 'N/A';
-			my $medianElapsed = 'N/A';
-			$maxElapsed = concise(duration(max(@elapsedTimes)));
-			$minElapsed = concise(duration(min(@elapsedTimes)));
-			$avgElapsed = concise(duration(int(sum(@elapsedTimes) / scalar(@elapsedTimes))));
-			if (@elapsedTimes == 1)
-			{
-				$medianElapsed = $elapsedTimes[0];
-			}
-			elsif (@elapsedTimes % 2 == 0)
-			{
-				my $half = @elapsedTimes/2;
-				$medianElapsed = ($elapsedTimes[$half - 1] + $elapsedTimes[$half])/2;
-			}
-			else
-			{
-				$medianElapsed = $elapsedTimes[int(@elapsedTimes/2)];
-			}
-			$medianElapsed = concise(duration($medianElapsed));
-		
-			my $suitedata =
-				{
-					id => $suiteid,
-					text => $name,
-					children => \@children,
+							title => $suiteId,
+							href => ''
+						},
 					data =>
 						{
 							type => 'suite',
-							name => $name,
-							resultcount => $totalTestCount,
-							elapsed =>
-								{
-									average => $avgElapsed,
-									max => $maxElapsed,
-									min => $minElapsed,
-									median => $medianElapsed
-								}
+							elapsed => calcElapsed(\@yearElapsedTimes),
+							resultcount => $resultCount,
+							name => $suiteName,
+							allpassed => $allpassed,
 						},
+					children => \@yearData,
 					a_attr =>
 						{
-							title => $suiteid,
-							href => ''
+							href => '',
+							$allpassed ? () : (style => 'color: red;'),
 						}
-				};
-	
-			if (exists($existingSuiteIds{$suiteid}))
-			{
-				my $ndx = $existingSuiteIds{$suiteid}->{ndx};
-				push(@{$suitedata->{children}}, @{$jsondata->[$ndx]->{children}});
-				$jsondata->[$ndx] = $suitedata;
-				$existingSuiteIds{$suiteid} = { ndx => $ndx, testcount => $suitedata->{data}->{resultcount}, elapsedtimes => \@elapsedTimes }; 
-			}
-			else
-			{
-				push(@$jsondata, $suitedata);
-				$existingSuiteIds{$suiteid} = { ndx => scalar(@$jsondata) - 1, testcount => 1, elapsedtimes => [ $elapsedTime ] }; 
-			}
-			$existingRunIds{$runid} = $suiteid;
+				);
+			
+			push(@$jsondata, \%suiteData);
 		}
 
 		my $lock = lockFile("$suitesJsonFile.lock");
@@ -260,6 +366,41 @@ END
 }
 
 ##
+
+sub calcElapsed
+{
+	my $elapsedTimes = shift;
+	
+	my $maxElapsed = 'N/A';
+	my $minElapsed = 'N/A';
+	my $avgElapsed = 'N/A';
+	my $medianElapsed = 'N/A';
+	$maxElapsed = concise(duration(max(@$elapsedTimes)));
+	$minElapsed = concise(duration(min(@$elapsedTimes)));
+	$avgElapsed = concise(duration(int(sum(@$elapsedTimes) / scalar(@$elapsedTimes))));
+	if (@$elapsedTimes == 1)
+	{
+		$medianElapsed = $elapsedTimes->[0];
+	}
+	elsif (@$elapsedTimes % 2 == 0)
+	{
+		my $half = @$elapsedTimes / 2;
+		$medianElapsed = ($elapsedTimes->[$half - 1] + $elapsedTimes->[$half])/2;
+	}
+	else
+	{
+		$medianElapsed = $elapsedTimes->[int(@$elapsedTimes / 2)];
+	}
+	$medianElapsed = concise(duration($medianElapsed));
+
+	return 											
+		{
+			median => $medianElapsed,
+			average => $avgElapsed,
+			min => $minElapsed,
+			max => $maxElapsed
+		},
+}
 
 sub setupWithLog
 {

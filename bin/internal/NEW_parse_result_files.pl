@@ -112,6 +112,7 @@ sub main
 		my $jsondata = [];
 
 		my %suiteNames;
+		my %suiteIds;
 		foreach my $runid (keys(%{$dbJson}))
 		{
 			my $dbRecord = $dbJson->{$runid};
@@ -120,19 +121,19 @@ sub main
 			my $startDt = DateTime::Format::ISO8601->parse_datetime($dbRecord->{begin});
 			my $recordYear = sprintf("%04d", $startDt->year());			
 			my $recordMonth = sprintf("%02d", $startDt->month());			
-			my $recordDay = sprintf("%02d", $startDt->day());			
-			if (exists($suiteNames{$suiteName}))
+			my $recordDay = sprintf("%02d", $startDt->day());
+			if (exists($suiteIds{$suiteId}) && $suiteIds{$suiteId} ne $suiteName)
 			{
-				if ($suiteNames{$suiteName}->{suiteid} ne $suiteId)
-				{
-					warn("Duplicate suitename, different suiteid: $suiteName/$suiteNames{$suiteName}->{suiteid} vs $suiteId in run $runid - skipping\n");
-					next;
-				}
-			}
-			else
+				warn("Duplicate suiteid, different suitename: $suiteId/$suiteIds{$suiteId} vs $suiteId/$suiteName in run $runid - skipping\n");
+				next;
+			}			
+			if (exists($suiteNames{$suiteName}) && $suiteNames{$suiteName}->{suiteid} ne $suiteId)
 			{
-				$suiteNames{$suiteName} = { suiteid => $suiteId, years => {} };
+				warn("Duplicate suitename, different suiteid: $suiteName/$suiteNames{$suiteName}->{suiteid} vs $suiteId/$suiteName in run $runid - skipping\n");
+				next;
 			}
+			$suiteIds{$suiteId} = $suiteName;
+			$suiteNames{$suiteName} = { suiteid => $suiteId, years => {} };
 			my $years = $suiteNames{$suiteName}->{years};
 			$years->{$recordYear} = { months => {} } unless exists($years->{$recordYear});
 			my $months = $years->{$recordYear}->{months};
