@@ -147,20 +147,23 @@ sub main
 		{
 			my $suiteId = $suiteNames{$suiteName}->{suiteid};
 			
+			my @yearElapsedTimes;
 			my @yearData;
 			my $years = $suiteNames{$suiteName}->{years};
 			foreach my $year (keys(%$years))
 			{
+				my @monthElapsedTimes;
 				my @monthData;
 				my $months = $years->{$year}->{months};
 				foreach my $month (keys(%$months))
 				{
+					my @dayElapsedTimes;
 					my @dayData;
 					my $days = $months->{$month}->{days};
 					foreach my $day (keys(%$days))
 					{
+						my @recordElapsedTimes;
 						my @recordData;
-						my @elapsedTimes;
 						my $records = $days->{$day}->{records};
 						foreach my $runid (keys(%$records))
 						{
@@ -208,7 +211,7 @@ sub main
 							my $startDt = DateTime::Format::ISO8601->parse_datetime($record->{begin});
 							my $endDt = DateTime::Format::ISO8601->parse_datetime($record->{end});
 							my $elapsedTime = $endDt->epoch() - $startDt->epoch();
-							push(@elapsedTimes, $elapsedTime);
+							push(@recordElapsedTimes, $elapsedTime);
 							my $resultdata =
 								{
 									id => $record->{runid},
@@ -221,6 +224,7 @@ sub main
 												timestamp => $record->{begin},
 												elapsedtime => $elapsedTime,
 												suitename => $record->{name},
+												allpassed => $record->{allpassed},
 											},
 										a_attr =>
 											{
@@ -230,30 +234,11 @@ sub main
 											}
 								};
 							push(@recordData, $resultdata);
-
-							my $maxElapsed = 'N/A';
-							my $minElapsed = 'N/A';
-							my $avgElapsed = 'N/A';
-							my $medianElapsed = 'N/A';
-							$maxElapsed = concise(duration(max(@elapsedTimes)));
-							$minElapsed = concise(duration(min(@elapsedTimes)));
-							$avgElapsed = concise(duration(int(sum(@elapsedTimes) / scalar(@elapsedTimes))));
-							if (@elapsedTimes == 1)
-							{
-								$medianElapsed = $elapsedTimes[0];
-							}
-							elsif (@elapsedTimes % 2 == 0)
-							{
-								my $half = @elapsedTimes/2;
-								$medianElapsed = ($elapsedTimes[$half - 1] + $elapsedTimes[$half])/2;
-							}
-							else
-							{
-								$medianElapsed = $elapsedTimes[int(@elapsedTimes/2)];
-							}
-							$medianElapsed = concise(duration($medianElapsed));
 						}
 
+						my $allpassedCount = 0;
+						$allpassedCount += $_->{data}->{allpassed} foreach (@recordData);
+						my $allpassed = $allpassedCount == scalar(@recordData) ? 1 : 0;
 						push(@dayData,
 								{
 									text => $day,
@@ -261,20 +246,26 @@ sub main
 									data =>
 										{
 											type => 'suite',
-											elapsed =>
-												{
-													median => '0s',
-													average => '0s',
-													min => '0s',
-													max => '0s'
-												},
-											resultcount => 1,
+											elapsed => calcElapsed(\@recordElapsedTimes),
+											resultcount => scalar(@recordData),
 											name => "$suiteName - $year - $month - $day",
+											allpassed => $allpassed,
 										},
 									children => \@recordData,
+									a_attr =>
+										{
+											href => '',
+											$allpassed ? () : (style => 'color: red;'),
+										}
 								});
+						push(@dayElapsedTimes, @recordElapsedTimes);
 					}
 					
+					my $resultCount = 0;
+					$resultCount += $_->{data}->{resultcount} foreach (@dayData);
+					my $allpassedCount = 0;
+					$allpassedCount += $_->{data}->{allpassed} foreach (@dayData);
+					my $allpassed = $allpassedCount == scalar(@dayData) ? 1 : 0;
 					push(@monthData,
 							{
 								text => $month,
@@ -282,20 +273,26 @@ sub main
 								data =>
 									{
 										type => 'suite',
-										elapsed =>
-											{
-												median => '0s',
-												average => '0s',
-												min => '0s',
-												max => '0s'
-											},
-										resultcount => 1,
+										elapsed => calcElapsed(\@dayElapsedTimes),
+										resultcount => $resultCount,
 										name => "$suiteName - $year - $month",
+										allpassed => $allpassed,
 									},
 								children => \@dayData,
+								a_attr =>
+									{
+										href => '',
+										$allpassed ? () : (style => 'color: red;'),
+									}
 							});
+					push(@monthElapsedTimes, @dayElapsedTimes);
 				}
 				
+				my $resultCount = 0;
+				$resultCount += $_->{data}->{resultcount} foreach (@monthData);
+				my $allpassedCount = 0;
+				$allpassedCount += $_->{data}->{allpassed} foreach (@monthData);
+				my $allpassed = $allpassedCount == scalar(@monthData) ? 1 : 0;
 				push(@yearData,
 						{
 							text => $year,
@@ -303,20 +300,26 @@ sub main
 							data =>
 								{
 									type => 'suite',
-									elapsed =>
-										{
-											median => '0s',
-											average => '0s',
-											min => '0s',
-											max => '0s'
-										},
-									resultcount => 1,
+									elapsed => calcElapsed(\@monthElapsedTimes),
+									resultcount => $resultCount,
 									name => "$suiteName - $year",
+									allpassed => $allpassed,
 								},
 							children => \@monthData,
+							a_attr =>
+								{
+									href => '',
+									$allpassed ? () : (style => 'color: red;'),
+								}
 						});
+				push(@yearElapsedTimes, @monthElapsedTimes);
 			}
 			
+			my $resultCount = 0;
+			$resultCount += $_->{data}->{resultcount} foreach (@yearData);
+			my $allpassedCount = 0;
+			$allpassedCount += $_->{data}->{allpassed} foreach (@yearData);
+			my $allpassed = $allpassedCount == scalar(@yearData) ? 1 : 0;
 			my %suiteData =
 				(
 					text => $suiteName,
@@ -329,17 +332,17 @@ sub main
 					data =>
 						{
 							type => 'suite',
-							elapsed =>
-								{
-									median => '0s',
-									average => '0s',
-									min => '0s',
-									max => '0s'
-								},
-							resultcount => 1,
+							elapsed => calcElapsed(\@yearElapsedTimes),
+							resultcount => $resultCount,
 							name => $suiteName,
+							allpassed => $allpassed,
 						},
 					children => \@yearData,
+					a_attr =>
+						{
+							href => '',
+							$allpassed ? () : (style => 'color: red;'),
+						}
 				);
 			
 			push(@$jsondata, \%suiteData);
@@ -362,6 +365,41 @@ END
 }
 
 ##
+
+sub calcElapsed
+{
+	my $elapsedTimes = shift;
+	
+	my $maxElapsed = 'N/A';
+	my $minElapsed = 'N/A';
+	my $avgElapsed = 'N/A';
+	my $medianElapsed = 'N/A';
+	$maxElapsed = concise(duration(max(@$elapsedTimes)));
+	$minElapsed = concise(duration(min(@$elapsedTimes)));
+	$avgElapsed = concise(duration(int(sum(@$elapsedTimes) / scalar(@$elapsedTimes))));
+	if (@$elapsedTimes == 1)
+	{
+		$medianElapsed = $elapsedTimes->[0];
+	}
+	elsif (@$elapsedTimes % 2 == 0)
+	{
+		my $half = @$elapsedTimes / 2;
+		$medianElapsed = ($elapsedTimes->[$half - 1] + $elapsedTimes->[$half])/2;
+	}
+	else
+	{
+		$medianElapsed = $elapsedTimes->[int(@$elapsedTimes / 2)];
+	}
+	$medianElapsed = concise(duration($medianElapsed));
+
+	return 											
+		{
+			median => $medianElapsed,
+			average => $avgElapsed,
+			min => $minElapsed,
+			max => $maxElapsed
+		},
+}
 
 sub setupWithLog
 {
