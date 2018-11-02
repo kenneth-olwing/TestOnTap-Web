@@ -280,7 +280,7 @@ function uploadButtonFunc()
 			}
 			currentUploadMsg = fullmsg;
 			$('#uploadMsg').text(basemsg);
-			$('#suitestitle').click(updateSuiteTree);
+			window.location.reload(false);
 		}
 	});
 }
