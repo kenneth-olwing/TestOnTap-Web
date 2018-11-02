@@ -133,7 +133,7 @@ sub main
 				next;
 			}
 			$suiteIds{$suiteId} = $suiteName;
-			$suiteNames{$suiteName} = { suiteid => $suiteId, years => {} };
+			$suiteNames{$suiteName} = { suiteid => $suiteId, years => {} } unless exists($suiteNames{$suiteName});
 			my $years = $suiteNames{$suiteName}->{years};
 			$years->{$recordYear} = { months => {} } unless exists($years->{$recordYear});
 			my $months = $years->{$recordYear}->{months};
