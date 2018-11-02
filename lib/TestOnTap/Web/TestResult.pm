@@ -11,6 +11,7 @@ use Archive::Zip;
 use JSON::PP; # XS f-ed up bcoz fork(), probably...
 use File::Basename;
 use File::Path qw(mkpath);
+use Fcntl qw(:flock);
 
 $SIG{CHLD} = 'IGNORE';
 
@@ -195,6 +196,22 @@ sub kickParser
 	}
 	
 	return;
+}
+
+sub isParserActive
+{
+	my $class = shift;
+	
+	my $parserLockFile = slashify("$appconfig->{datadir}/parser.lock");
+	
+	my $active = 1;
+	if (open(my $fh, '>', $parserLockFile))
+	{
+		$active = flock($fh, LOCK_EX | LOCK_NB) ? 0 : 1;
+		close($fh);
+	}
+
+	return $active;	
 }
 
 ##

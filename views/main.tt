@@ -26,6 +26,7 @@
 				DEVELOPMENT MODE!
 				&nbsp;
 				<button id="btnKickParser">Kick parser</button>
+				<button id="btnIsParserActive">Is parser active</button>
 				<button id="btnSwitchAutoUpd">Switch autoupd</button>
 			</div>
 		[% END %]
@@ -36,6 +37,7 @@
 				<div>
 					<h3 id="suitestitle" class="columntitle" style="display:inline-block;">Suites</h3>
 					(auto:<input id="autoupd" type="checkbox"/>)
+					<p id="activemsg"/>
 				</div>
 				<hr/>
 				<div id="suitenavtree"></div>

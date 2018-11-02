@@ -12,6 +12,20 @@ $(document).ready
 						}
 					)
 				});
+			$('#btnIsParserActive').click(function() 
+					{
+						$.ajax
+						(
+							{
+								url : '/development/isparseractive',
+								type : 'POST',
+								success : function(active)
+								{
+									alert(active);
+								}
+							}
+						)
+					});
 			$('#btnSwitchAutoUpd').click(function() 
 					{
 						var val = getCookieValue('autoupd');

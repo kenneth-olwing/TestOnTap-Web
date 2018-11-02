@@ -39,6 +39,21 @@ function updateSuiteTree(firstTime)
 	$.ajax
 	(
 		{
+			url : '/api/v1/isparseractive',
+			type : 'POST',
+			success : function(active)
+			{
+				if (active == 1)
+					$('#activemsg').html("<hr/>NOTE: results are being processed!");
+				else
+					$('#activemsg').html("");
+			}
+		}
+	);
+	
+	$.ajax
+	(
+		{
 			url : '/api/v1/suites',
 			success : function(json)
 				{
@@ -241,6 +256,7 @@ function uploadButtonFunc()
 		}
 	}
 
+	$('#uploadMsg').text("UPLOADING...");
 	var formData = new FormData($("#uploadForm")[0]);
 	$.ajax({
 		url : '/api/v1/upload',
@@ -264,6 +280,7 @@ function uploadButtonFunc()
 			}
 			currentUploadMsg = fullmsg;
 			$('#uploadMsg').text(basemsg);
+			$('#suitestitle').click(updateSuiteTree);
 		}
 	});
 }

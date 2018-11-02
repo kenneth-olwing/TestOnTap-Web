@@ -17,6 +17,11 @@ post '/kickparser' => sub
 		TestOnTap::Web::TestResult->kickParser();
 	};
 	
+post '/isparseractive' => sub
+	{
+		return TestOnTap::Web::TestResult->isParserActive();
+	};
+	
 get qr(/?) => sub
 	{
 		"Process: $$";

@@ -18,6 +18,11 @@ use Dancer2 appname => 'TestOnTap-Web';
 
 prefix '/api/v1';
 
+post '/isparseractive' => sub
+	{
+		return TestOnTap::Web::TestResult->isParserActive();
+	};
+	
 post '/upload' => sub
 	{
 		my $uploads = upload('testresult');

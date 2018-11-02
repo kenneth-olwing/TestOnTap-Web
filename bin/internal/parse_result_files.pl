@@ -50,7 +50,7 @@ sub main
 			}
 		);
 
-	my $scriptlock = lockFile(($logdir || $datadir) . '/' . basename($0) . ".lock");
+	my $scriptlock = lockFile("$datadir/parser.lock");
 	
 	setupWithLog($logdir) if $logdir;
 	
@@ -406,12 +406,8 @@ sub setupWithLog
 {
 	my $logdir = shift;
 
-	my $logfile = basename($0);
-	$logfile =~ s/\.[^.]+$/.log/;
-	$logfile = "$logdir/$logfile";
+	my $logfile = "$logdir/parser.log";
 
-#	print "Stdout/err will be redirected to '$logfile'\n";
-		
 	open(my $fh, '>>', $logfile) or die("Failed to aopen '$logfile': $!\n");
 	$fh->autoflush(1);
 	
@@ -422,7 +418,7 @@ sub lockFile
 {
 	my $fn = shift;
 
-	open(my $fh, '>', $fn) or die("Failed to ropen '$fn': $!\n");
+	open(my $fh, '>', $fn) or die("Failed to wopen '$fn': $!\n");
 	flock($fh, LOCK_EX);
 
 	return $fh;
