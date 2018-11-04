@@ -287,8 +287,6 @@ function uploadButtonFunc()
 						alert(fullmsg);
 					}
 					currentUploadMsg = fullmsg;
-//					$('#uploadMsg').text(basemsg);
-//					window.location.reload(false);
 				}
 			});
 		}
