@@ -78,7 +78,8 @@ body
 {
 	margin: 0;
 	padding-right: 10px;
-	cursor: pointer;	
+	cursor: pointer;
+	color: white;
 }
 
 .row

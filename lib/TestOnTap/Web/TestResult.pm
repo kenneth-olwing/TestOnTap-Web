@@ -5,7 +5,8 @@ use warnings;
 
 use TestOnTap::Web::Config;
 use TestOnTap::Web::Logger;
-use TestOnTap::Web::Util qw(slashify $LIST_SEP);
+use TestOnTap::Web::Util qw(slashify $LIST_SEP $IS_WINDOWS);
+require TestOnTap::Web::Win32Util if $IS_WINDOWS;
 
 use Archive::Zip;
 use JSON::PP; # XS f-ed up bcoz fork(), probably...
@@ -180,21 +181,29 @@ sub kickParser
 	local %ENV = %ENV;
 	$ENV{PERL5LIB} = join($LIST_SEP, @INC); 
 	
-	my $forkpid = fork();
-	if (defined($forkpid))
+	if ($IS_WINDOWS)
 	{
-		if ($forkpid == 0)
-		{
-			# child
-			my $xit = system(@cmd) >> 8;
-			exit($xit);
-		}
+		my $msg = TestOnTap::Web::Win32Util::detachProc(@cmd);
+		apperror("Win32 detach of parser failed: $msg") if $msg;
 	}
 	else
 	{
-		apperror("Fork of parser failed!: $!");
+		my $forkpid = fork();
+		if (defined($forkpid))
+		{
+			if ($forkpid == 0)
+			{
+				# child
+				my $xit = system(@cmd) >> 8;
+				exit($xit);
+			}
+		}
+		else
+		{
+			apperror("Fork of parser failed!: $!");
+		}
 	}
-	
+		
 	return;
 }
 

@@ -71,43 +71,47 @@ sub main
 	my $dbRecords = scalar(keys(%$dbJson));
 	foreach my $zipFile (sort(glob("$datadir/results/*.zip")))
 	{
-		if ((stat($zipFile))[9] > $tsDbJsonFile)
+		next unless $zipFile =~ /\.([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.zip$/;
+		my $runid = $1;
+		next if $dbJson->{$runid};
+		my $obj = TestOnTap::Web::TestResult->new($zipFile);
+		if (!$obj)
 		{
-			my $obj = TestOnTap::Web::TestResult->new($zipFile);
-			if (!$obj)
-			{
-				warn("Not a test result, skipping: '$zipFile'\n");
-				next;
-			}
-			print "Loaded '$zipFile'\n";
-			
-			my $runid = $obj->getRunid();
-			next if $dbJson->{$runid};
-			my @tests;
-			foreach my $testName (@{$obj->getTestNames()})
-			{
-				push(@tests, { name => $testName, has_problems => $obj->getResultForTest($testName)->{has_problems} });
-			}
-			$dbJson->{$runid} =
-						{
-							runid => $runid,
-							name => $obj->getSuiteName(),
-							suiteid => $obj->getSuiteId(),
-							begin => $obj->getBegin(),
-							end => $obj->getEnd(),
-							zip => basename($obj->getFilename()),
-							allpassed => $obj->getAllPassed(),
-							tests => \@tests,
-						};
+			warn("Not a test result, skipping: '$zipFile'\n");
+			next;
 		}
+		print "Loaded '$zipFile'\n";
+		
+		if ($obj->getRunid() ne $runid)
+		{
+			warn("Invalid runid in $zipFile - '$runid' != " . $obj->getRunid());
+			next;
+		}
+
+		my @tests;
+		foreach my $testName (@{$obj->getTestNames()})
+		{
+			push(@tests, { name => $testName, has_problems => $obj->getResultForTest($testName)->{has_problems} });
+		}
+
+		$dbJson->{$runid} =
+					{
+						runid => $runid,
+						name => $obj->getSuiteName(),
+						suiteid => $obj->getSuiteId(),
+						begin => $obj->getBegin(),
+						end => $obj->getEnd(),
+						zip => basename($obj->getFilename()),
+						allpassed => $obj->getAllPassed(),
+						tests => \@tests,
+					};
 	}
-	$pathDbJson->spew_raw($json->encode($dbJson)) if (scalar(keys(%$dbJson)) != $dbRecords);
+	my $needUpdate = (scalar(keys(%$dbJson)) != $dbRecords) ? 1 : 0;
+	$pathDbJson->spew_raw($json->encode($dbJson)) if $needUpdate;
 	
-	$tsDbJsonFile = (stat($dbJsonFile))[9] || 0;
 	my $suitesJsonFile = "$datadir/suites.json";
-	my $tsSuitesJsonFile = (stat($suitesJsonFile))[9] || 0;
 	my $p = path($suitesJsonFile);
-	if ($tsDbJsonFile > $tsSuitesJsonFile)
+	if (!$p->exists() || $needUpdate)
 	{
 		my $jsondata = [];
 
@@ -410,7 +414,7 @@ sub setupWithLog
 
 	open(my $fh, '>>', $logfile) or die("Failed to aopen '$logfile': $!\n");
 	$fh->autoflush(1);
-	
+
 	*STDOUT = *STDERR = $fh;
 }
 

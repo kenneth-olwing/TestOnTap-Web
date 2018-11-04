@@ -284,7 +284,7 @@ function uploadButtonFunc()
 						{
 							fullmsg += obj.files[key].msg + " (" + key + ")\n";
 						}
-//						alert(fullmsg);
+						alert(fullmsg);
 					}
 					currentUploadMsg = fullmsg;
 //					$('#uploadMsg').text(basemsg);

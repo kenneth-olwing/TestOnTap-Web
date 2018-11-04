@@ -15,7 +15,7 @@
 
 		<div class="topbar">
 			<form id="uploadForm" enctype="multipart/form-data">
-				<input type="file" name="testresult" id="inpUpload" multiple="true">
+				<input type="file" name="testresult" id="inpUpload" multiple="true" style="color: white;">
 			</form>
 			<button type="button" id="btnUpload">Upload test result</button>
 			<p id="uploadMsg"/>

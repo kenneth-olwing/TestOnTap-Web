@@ -17,7 +17,7 @@ get '/' => sub
 		my $autoupd = cookie('autoupd');
 		cookie(autoupd => true, http_only => false) unless defined($autoupd);
 		
-		my $isDev = config()->{environment} eq 'development';
+		my $isDev = config()->{environment} eq 'development' || query_parameters->get('dev');
 		template('main',
 			{
 				dotMin => $isDev ? '' : '.min',
