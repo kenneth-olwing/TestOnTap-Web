@@ -243,46 +243,83 @@ function uploadButtonFunc()
 {
 	var files = $('#inpUpload')[0].files;
 
-	if (files.length == 0)
+	var len = files.length; 
+	if (len == 0)
 		return;
 
 	for (var i = 0; i < files.length ; i++)
 	{
 		var file = files.item(i);
-		if (file.type !== 'application/x-zip-compressed')
+		if (file.name.endsWith('.zip'))
+		{
+			var formData = new FormData();
+			formData.append('testresult', file);
+			$.ajax({
+				url : '/api/v1/upload',
+				type : 'POST',
+				data : formData,
+				xhr: function()
+						{
+							var myXhr = $.ajaxSettings.xhr();
+							if (myXhr.upload)
+							{
+								myXhr.upload.TestOnTap = {};
+								myXhr.upload.TestOnTap.file = file.name;
+								myXhr.upload.TestOnTap.item = i + "/" + len;
+								myXhr.upload.addEventListener('progress', uploadProgress,false);
+								myXhr.upload.addEventListener('loadend', uploadComplete,false);
+							}
+							return myXhr;
+						},
+				processData : false,
+				contentType : false,
+				success : function(data) {
+					var obj = JSON.parse(data);
+					var basemsg = obj.msg;
+					var fullmsg = basemsg;
+					if (obj.result != 0)
+					{
+						fullmsg += "\n\n";
+						for (key in obj.files)
+						{
+							fullmsg += obj.files[key].msg + " (" + key + ")\n";
+						}
+//						alert(fullmsg);
+					}
+					currentUploadMsg = fullmsg;
+//					$('#uploadMsg').text(basemsg);
+//					window.location.reload(false);
+				}
+			});
+		}
+		else
 		{
 			alert("Test results are expected to be zip files: " + file.name);
-			return;
 		}
 	}
 
-	$('#uploadMsg').text("UPLOADING...");
-	var formData = new FormData($("#uploadForm")[0]);
-	$.ajax({
-		url : '/api/v1/upload',
-		type : 'POST',
-		data : formData,
-		processData : false,
-		contentType : false,
-		success : function(data) {
-			resetInput('inpUpload');
-			var obj = JSON.parse(data);
-			var basemsg = obj.msg;
-			var fullmsg = basemsg;
-			if (obj.result != 0)
-			{
-				fullmsg += "\n\n";
-				for (key in obj.files)
+	resetInput('inpUpload');
+}
+
+function uploadProgress(e)
+{
+	if (e.lengthComputable)
+	{
+		var pct = e.loaded / e.total * 100;
+		$('#uploadMsg').text(this.TestOnTap.item + "(" + pct.toPrecision(4) + "% " + this.TestOnTap.file + ")");
+	}
+}
+
+function uploadComplete(e)
+{
+	var msg = "Uploaded " + this.TestOnTap.file;
+	var uploadMsg = $('#uploadMsg'); 
+	uploadMsg.text(msg);
+	setTimeout(function()
 				{
-					fullmsg += obj.files[key].msg + " (" + key + ")\n";
-				}
-				alert(fullmsg);
-			}
-			currentUploadMsg = fullmsg;
-			$('#uploadMsg').text(basemsg);
-			window.location.reload(false);
-		}
-	});
+					if (uploadMsg.text() == msg)
+						uploadMsg.text("");
+				}, 5000);
 }
 
 function getCookieValue(a)
